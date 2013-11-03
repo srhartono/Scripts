@@ -26,7 +26,7 @@ my %color = %{$colors};
 open (my $in , "<", $input)  or die "Cannot read from $input: $!\n";
 open (my $out, ">", $output) or die "Cannot write to $output: $!\n";
 my ($output_name) = get_filename($output);
-print $out "track name=\"$output_name\" description=\"$output_name\" itemRgb=\"On\"\nvisibility=1\n";
+print $out "track name=\"$output_name\" description=\"$output_name\" itemRgb=\"On\" visibility=1\n";
 
 # Set up global variables which temporarily store "current" values when processing input file
 my ($current_chr, $current_state);
