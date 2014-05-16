@@ -1,6 +1,4 @@
 #!/usr/bin/perl
-# An example script demonstrating the use of BioMart API.
-# This perl API representation is only available for configuration versions >=  0.5 
 use strict; use warnings FATAL => 'all';
 use BioMart::Initializer;
 use BioMart::Query;
@@ -39,32 +37,41 @@ my ($regFolder) = $regFile =~ /^(.+)\/\w+\.\w+/;
 my $regCache    = "$regFolder/cachedRegistries/registry.xml.cached";
 sanity_check($regFile, $action, $regCache);
 
+# Iniitialize biomart
 print "my \$initializer = BioMart::Initializer->new('registryFile'=>$regFile, 'action'=>$action)\n";
 my $initializer = BioMart::Initializer->new('registryFile'=>$regFile, 'action'=>$action);
 my $registry    = $initializer->getRegistry;
 my $orgDataset  = `cat $regCache`;
 
+# Get list of clades to access organisms
 my @class   = @{getOrgInfo("class")};
 my %orglist = %{getOrgInfo("orglist")};
 my $org_count = 0;
+
+# Get ortholog for each organism
 foreach my $class (@class) {
-	my ($family) = $class =~ /^(\w+)\_\w+/;
-	my $MainOrganism   = getMainOrganism($family);
+	my ($family)     = $class =~ /^(\w+)\_\w+/;
+	my $MainOrganism = getMainOrganism($family);
 	next if $family =~ /Prot/; # Protists are not used
 	
 	foreach my $org (@{$orglist{$class}}) {
-		next if $orgDataset !~ /$org/i;
-		next if $MainOrganism =~ /$org/i;
+		next if $orgDataset   !~ /$org/i; # If organism is asked but doesn't exist in cache then skip it
+		next if $MainOrganism =~ /$org/i; # Don't want to get ortholog for that organism
+
 		$org_count++;
 		print STDERR "$org_count\. Processing: $class.$org.ortholog\n";
+
+		# Define query
 		my $query = BioMart::Query->new('registry'=>$registry,'virtualSchemaName'=>'default');
 		#$query->listDataset();
 		$query->setDataset("$MainOrganism");
 		$query->addAttribute("ensembl_gene_id");
+
+		# Attributes syntax differ between main ensembl and Plants/Metazoa/Fungi/Protist. One uses "eg_gene" the other "gene_ensembl"
 		$query->addAttribute("$org\_homolog_ensembl_gene") if $MainOrganism =~ /gene_ensembl/;
-		$query->addAttribute("$org\_eg_gene") if $MainOrganism =~ /eg_gene/;
-		$query->addAttribute("$org\_eg_homolog_perc_id") if $MainOrganism =~ /eg_gene/;
-		$query->addAttribute("$org\_homolog_perc_id") if $MainOrganism =~ /gene_ensembl/;
+		$query->addAttribute("$org\_eg_gene") 		   if $MainOrganism =~ /eg_gene/;
+		$query->addAttribute("$org\_eg_homolog_perc_id")   if $MainOrganism =~ /eg_gene/;
+		$query->addAttribute("$org\_homolog_perc_id")      if $MainOrganism =~ /gene_ensembl/;
 
 		$query->formatter("TSV"); # Tab Separated Values
 		
@@ -98,20 +105,13 @@ sub sanity_check {
 } 
 sanity_check($regFile, $action, $regCache);
 
-
 sub getMainOrganism {
 	my ($family) = @_;
 	return "athaliana_eg_gene" 	if $family =~ /Plant/i;
 	return "dmelanogaster_eg_gene" 	if $family =~ /Metazoa/i;
 	return "hsapiens_gene_ensembl" 	if $family =~ /Chordate/i;
 	return "scerevisiae_eg_gene" 	if $family =~ /Fungi/i;
-	print "Cannot find MainOrganism for family $family.
-List of valid families:
-- Plant
-- Metazoa
-- Chordate
-- Fungi
-";
+	print "Cannot find MainOrganism for family $family (Valid families: Plant, Metazoa, Chordate, Fungi)\n";
 }
 
 sub getOrgInfo {
