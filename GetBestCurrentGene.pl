@@ -1,11 +1,11 @@
 #!/usr/bin/perl
 
-use strict; use warnings; use mitochy;
+use strict; use warnings;
 
 my ($input) = @ARGV;
 die "usage: $0 <input>\n" unless @ARGV;
 
-my ($folder, $name) = mitochy::getFilename($input, "folder");
+my ($folder, $name) = getFilename($input, "folder");
 
 open (my $in, "<", $input) or die "Cannot read from $input: $!\n";
 
@@ -30,4 +30,26 @@ close $in;
 
 foreach my $tname (sort {$data{$a}{chr} cmp $data{$b}{chr} || $data{$a}{start} <=> $data{$b}{start}} keys %data) {
 	print "$data{$tname}{line}\n";
+}
+
+
+sub getFilename {
+        my ($fh, $type) = @_;
+
+        die "getFilename <fh> <type (folder, full, folderfull, all)\n" unless defined($fh);
+
+        # Split folder and fullname
+        my (@splitname) = split("\/", $fh);
+        my $fullname = pop(@splitname);
+        my @tempfolder = @splitname;
+        my $folder = join("\/", @tempfolder);
+
+        # Split fullname and shortname (dot separated)
+        @splitname = split(/\./, $fullname);
+        my $shortname = $splitname[0];
+        return($shortname)                      if not defined($type);
+        return($fullname)                       if defined($type) and $type =~ /full/;
+        return($folder, $shortname)             if defined($type) and $type =~ /folder/;
+        return($folder, $fullname)              if defined($type) and $type =~ /folderfull/;
+        return($folder, $fullname, $shortname)  if defined($type) and $type =~ /all/;
 }
